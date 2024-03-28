@@ -16,6 +16,9 @@ extern "C" {
 #define HAL_FLASH_MODULE_ENABLED
 #define HAL_PWR_MODULE_ENABLEDZ
 #define HAL_CORTEX_MODULE_ENABLED
+#define HAL_TIM_MODULE_ENABLED
+#define HAL_SPI_MODULE_ENABLED
+#define HAL_UART_MODULE_ENABLED
 
 #define HSE_VALUE            24000000U
 #define HSE_STARTUP_TIMEOUT  100U
@@ -34,6 +37,9 @@ extern "C" {
 #include "air001xx_hal_pwr.h"
 #include "air001xx_hal_rtc.h"
 #include "air001xx_hal_cortex.h"
+#include "air001xx_hal_tim.h"
+#include "air001xx_hal_spi.h"
+#include "air001xx_hal_uart.h"
 
 #define assert_param(expr) ((void)0U)
 
