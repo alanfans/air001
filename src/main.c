@@ -1,63 +1,117 @@
 #include <stdio.h>
 #include "main.h"
-#include "ws2812b.h"
+//#include "ws2812b.h"
 #include "air001xx_hal_uart.h"
 
-
+static void SystemClock_Config(uint32_t HSICLKSOURCE_SET);
 void HAL_MspInit(void) {
-    __HAL_RCC_SYSCFG_CLK_ENABLE();
-    __HAL_RCC_PWR_CLK_ENABLE();
-    __HAL_RCC_USART1_CLK_ENABLE();
+	/* GPIO Ports Clock Enable */
+//	__HAL_RCC_SYSCFG_CLK_ENABLE();
+//	__HAL_RCC_PWR_CLK_ENABLE();
+	__HAL_RCC_USART1_CLK_ENABLE();
 
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
+//	__HAL_RCC_GPIOB_CLK_ENABLE();
+	__HAL_RCC_GPIOA_CLK_ENABLE();
 }
 
+extern UART_HandleTypeDef UART_HandleType;
+extern float Temperature;
+char message[50];
+void PrintFloat(float value)
+{
+    int tmp,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6;
+    tmp = (int)value;
+    tmp1=(int)((value-tmp)*10)%10;
+    tmp2=(int)((value-tmp)*100)%10;
+    tmp3=(int)((value-tmp)*1000)%10;
+    tmp4=(int)((value-tmp)*10000)%10;
+    tmp5=(int)((value-tmp)*100000)%10;
+    tmp6=(int)((value-tmp)*1000000)%10;
+    sprintf(message,"温度Temperature: %d.%d%d%d%d%d%d\r\n",tmp,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6);
+}
 
-UART_HandleTypeDef UART_HandleType = {0};
 int main() {
 
-    HAL_Init();
-    APP_SPIConfig();
+	HAL_Init();
+	SystemClock_Config(RCC_HSICALIBRATION_24MHz);
+	MX_GPIO_Init();
+	MX_TIM1_Init();
+	HAL_TIM_Base_Start(&htim1); // 启动TIM1定时器
+//	APP_SPIConfig();
 
+	while (1) {
 
+//
 
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin = GPIO_PIN_2 | GPIO_PIN_1 | GPIO_PIN_0;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    GPIO_InitTypeDef GPIO_InitStruct_uart = {0};
-    GPIO_InitStruct_uart.Pin = GPIO_PIN_2 | GPIO_PIN_3;
-    GPIO_InitStruct_uart.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct_uart.Pull = GPIO_PULLUP;
-    GPIO_InitStruct_uart.Speed = GPIO_SPEED_FREQ_HIGH;
-    GPIO_InitStruct_uart.Alternate = GPIO_AF1_USART1;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct_uart);
-    UART_HandleType.Instance = USART1;
-    UART_HandleType.Init.BaudRate = 115200;
-    UART_HandleType.Init.WordLength = UART_WORDLENGTH_8B;
-    UART_HandleType.Init.StopBits = UART_STOPBITS_1;
-    UART_HandleType.Init.Parity = UART_PARITY_NONE;
-    UART_HandleType.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-    UART_HandleType.Init.Mode = UART_MODE_TX_RX;
-    if(HAL_UART_Init(&UART_HandleType) != HAL_OK){
-    	HAL_Delay(3);
-    }else{
-    	HAL_Delay(2);
-    }
-
-
-    while (1) {
-        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2 | GPIO_PIN_1 | GPIO_PIN_0);
-        HAL_Delay(1000);
-        RGB_GREEN(LED_NUM);
-
-        char buffer[] = "test\r\n";
-        HAL_UART_Transmit(&UART_HandleType, buffer, sizeof(buffer), HAL_MAX_DELAY);
-        HAL_Delay(2);
-    }
+		DS18B20_TEMP();
+		PrintFloat(Temperature);
+//		sprintf(message, "温度Temperature: %.2f C\n", Temperature);
+		HAL_UART_Transmit(&UART_HandleType, message, sizeof(message), HAL_MAX_DELAY);
+//
+		HAL_Delay(1000);
+	}
 }
 
+/** System Clock Configuration
+ */
+void SystemClock_Config(uint32_t HSICLKSOURCE_SET) {
+
+	RCC_OscInitTypeDef RCC_OscInitStruct;
+	RCC_ClkInitTypeDef RCC_ClkInitStruct;
+
+	/**Configure the main internal regulator output voltage
+	 */
+
+//  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+	/**Initializes the CPU, AHB and APB busses clocks
+	 */
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI
+			| RCC_OSCILLATORTYPE_LSI;
+	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+	RCC_OscInitStruct.HSICalibrationValue = HSICLKSOURCE_SET;
+	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
+		_Error_Handler(__FILE__, __LINE__);
+	}
+
+	/**Initializes the CPU, AHB and APB busses clocks
+	 */
+	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
+			| RCC_CLOCKTYPE_PCLK1;
+	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK) {
+		_Error_Handler(__FILE__, __LINE__);
+	}
+
+	/**Configure the Systick interrupt time
+	 */
+	HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq() / 1000);
+
+	/**Configure the Systick
+	 */
+	HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
+
+	/* SysTick_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+}
+
+/* USER CODE BEGIN 4 */
+
+/* USER CODE END 4 */
+
+/**
+ * @brief  This function is executed in case of error occurrence.
+ * @param  None
+ * @retval None
+ */
+void _Error_Handler(char *file, int line) {
+	/* USER CODE BEGIN Error_Handler_Debug */
+	/* User can add his own implementation to report the HAL error return state */
+	while (1) {
+	}
+	/* USER CODE END Error_Handler_Debug */
+}
